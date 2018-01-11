@@ -3,6 +3,16 @@ pyautogui.PAUSE = 3
 pyautogui.FAILSAFE = True
 
 from time import sleep
+import socket
+
+def isOpen(ip,port):
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	try:
+		s.connect((ip, int(port)))
+		s.shutdown(2)
+		return True
+	except:
+		return False
 
 def setupOutlook():
 	print('Begin setup...')
@@ -41,35 +51,17 @@ def setupOutlook():
 		image = pyautogui.locateOnScreen('C:/clickPhish/SecurityAlert.png')
 	image = pyautogui.locateOnScreen('C:/clickPhish/No.png')
 	pyautogui.click(pyautogui.center(image)[0]-80,pyautogui.center(image)[1])
+	sleep(3)
+	image = pyautogui.locateOnScreen('C:/clickPhish/JunkEmail.png')
+	pyautogui.click(pyautogui.center(image))
+	pyautogui.typewrite('o')
+	pyautogui.press('up')
+	sleep(1)
+	pyautogui.press('enter')
 	file = open('C:/clickPhish/stage.txt','w')
 	file.write('2')
 	file.close()
-	
-print('Sleeping for 15 to wait for things to finish loading')
-#sleep(15)
-
-file = open('C:/clickPhish/stage.txt','r')
-stage = file.read()
-print('Stage: ' + stage)
-file.close()
-
-if stage == '1':
-	#click Greenshot option dialogue
-	print('Closing Greenshot dialogue...')
-	image = None
-	while image == None:
-		image = pyautogui.locateOnScreen('C:/clickPhish/greenOK.png')
-	pyautogui.click(pyautogui.center(image))
-
-	#Waiting for Initial Outlook Setup
-	print('Looking for Outlook setup page...')
-	image = None
-	while image == None:
-		image = pyautogui.locateOnScreen('C:/clickPhish/outlookSetup.png')
-
-	print('Outlook setup located...')
-	pyautogui.click(pyautogui.center(image))
-	setupOutlook()
+	main()
 
 #functions for email checking and payload  execution
 def closeExplorer():
@@ -135,22 +127,57 @@ def executePayload():
 		print('No attachent found...')
 		clearInbox()
 	return
-		
-if stage == '2':
-	try:
-		while True:
-			print('Ensuring that explorer is closed...')
-			closeExplorer()
-			print('Ensuring that Outlook is in focus...')
-			focusOutlook()
+
+
+print('Sleeping for 15 to wait for things to finish loading')
+sleep(15)
+
+#testing for Exchange server availability
+ready = False
+while not ready:
+	print('Testing for Exchange server availability...')
+	if isOpen('10.30.40.21',25):
+		ready = True
+	else:
+		print('Unable to contact Exchange server. Sleeping for 5 before trying again...')
+		sleep(5)
+
+def main():
+	file = open('C:/clickPhish/stage.txt','r')
+	stage = file.read()
+	print('Stage: ' + stage)
+	file.close()
+
+	if stage == '1':
+		print('Waiting 3 minutes for Exchange Server to come online...')
+		sleep(180)
+		#Waiting for Initial Outlook Setup
+		print('Looking for Outlook setup page...')
+		image = None
+		while image == None:
+			image = pyautogui.locateOnScreen('C:/clickPhish/outlookSetup.png')
+
+		print('Outlook setup located...')
+		pyautogui.click(pyautogui.center(image))
+		setupOutlook()
+
+	if stage == '2':
+		try:
+			while True:
+				print('Ensuring that explorer is closed...')
+				closeExplorer()
+				print('Ensuring that Outlook is in focus...')
+				focusOutlook()
 			
-			#setup incoming email checking loop
-			print('Watching for new incoming emails...')
-			image = pyautogui.locateOnScreen('c:/clickPhish/noEmail.png')
-			while image != None:
+				#setup incoming email checking loop
+				print('Watching for new incoming emails...')
 				image = pyautogui.locateOnScreen('c:/clickPhish/noEmail.png')
-			print('New email detected. Processing...')
-			executePayload()
-	except KeyboardInterrupt:
-		print('\nDone.')
+				while image != None:
+					image = pyautogui.locateOnScreen('c:/clickPhish/noEmail.png')
+				print('New email detected. Processing...')
+				executePayload()
+		except KeyboardInterrupt:
+			print('\nDone.')
+
+main()
 
